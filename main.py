@@ -2,6 +2,7 @@ import os
 import uuid
 import re
 import glob
+import time
 from typing import Optional, List
 
 # PDF extraction
@@ -15,8 +16,8 @@ load_dotenv()
 # For pretty printing
 from rich import print
 
-# Pinecone for vector database
-import pinecone
+# Pinecone for vector database using the new API:
+from pinecone import Pinecone, ServerlessSpec
 
 # Hugging Face for embeddings
 from transformers import AutoTokenizer, AutoModel
@@ -24,10 +25,69 @@ import torch
 
 # LangChain imports
 from langchain.prompts import ChatPromptTemplate
-# Fix: Import ChatOpenAI directly from its module to avoid dependency on langchain_community
-from langchain.chat_models.openai import ChatOpenAI
+# Use updated import from langchain_community as per deprecation notice
+from langchain_community.chat_models.openai import ChatOpenAI
 from pydantic import BaseModel
 from langchain.chains import create_extraction_chain_pydantic
+
+# Import OpenAI error handling with fallback if not installed.
+try:
+    from openai.error import RateLimitError
+except ModuleNotFoundError:
+    print(
+        "[yellow]Warning: Module 'openai.error' not found. Please install 'openai' via pip for proper rate limit handling.[/yellow]")
+
+
+    class RateLimitError(Exception):
+        pass
+
+
+# -----------------------------------------------------------------------------
+# Helper: Truncate Text
+# -----------------------------------------------------------------------------
+
+def truncate_text(text: str, max_chars: int = 200) -> str:
+    """Truncate the text to a maximum number of characters."""
+    return text if len(text) <= max_chars else text[:max_chars] + "..."
+
+
+# -----------------------------------------------------------------------------
+# Helper: Safe Invoke with Retry Mechanism
+# -----------------------------------------------------------------------------
+
+def safe_invoke(func, params, max_retries=3, delay=5):
+    """
+    Calls the given function with params.
+    If a RateLimitError occurs, checks for 'insufficient_quota' in the error message
+    and immediately raises an exception; otherwise, retries the call.
+    """
+    for attempt in range(max_retries):
+        try:
+            result = func(params)
+            return result
+        except RateLimitError as e:
+            if "insufficient_quota" in str(e):
+                raise Exception("Insufficient quota. Check your OpenAI billing plan. " + str(e))
+            print(
+                f"[red]Rate limit exceeded. Retrying in {delay} seconds... (Attempt {attempt + 1}/{max_retries})[/red]")
+            time.sleep(delay)
+    raise Exception("Maximum retries exceeded due to rate limits.")
+
+
+# -----------------------------------------------------------------------------
+# Helper: Batch Upsert Vectors
+# -----------------------------------------------------------------------------
+
+def batch_upsert_vectors(index, vectors: List[dict], batch_size: int = 10):
+    """Upserts vectors in batches to avoid exceeding request size limits."""
+    responses = []
+    total = len(vectors)
+    for i in range(0, total, batch_size):
+        batch = vectors[i:i + batch_size]
+        response = index.upsert(vectors=batch)
+        responses.append(response)
+        print(f"[bold green]Upserted batch {i // batch_size + 1} of {((total - 1) // batch_size) + 1}[/bold green]")
+    return responses
 
 
 # =============================================================================
@@ -35,9 +95,7 @@ from langchain.chains import create_extraction_chain_pydantic
 # =============================================================================
 
 def extract_text_from_pdf(pdf_path: str) -> str:
-    """
-    Extracts text from a PDF file.
-    """
+    """Extracts text from a PDF file."""
     try:
         text = extract_text(pdf_path)
         return text
@@ -47,9 +105,7 @@ def extract_text_from_pdf(pdf_path: str) -> str:
 
 
 def clean_text(text: str) -> str:
-    """
-    Cleans text by removing unwanted characters and normalizing whitespace.
-    """
+    """Cleans text by removing unwanted characters and normalizing whitespace."""
     text = re.sub(r'[^A-Za-z0-9\s.,;:()\-]', '', text)
     text = re.sub(r'\s+', ' ', text)
     return text.strip()
@@ -63,18 +119,14 @@ class AgenticChunker:
     def __init__(self, openai_api_key: Optional[str] = None):
         self.chunks = {}
         self.id_truncate_limit = 5
-
-        # Whether or not to update/refine summaries and titles as new info is added
         self.generate_new_metadata_ind = True
         self.print_logging = True
 
         if openai_api_key is None:
             openai_api_key = os.getenv("OPENAI_API_KEY")
-
         if openai_api_key is None:
             raise ValueError("API key is not provided and not found in environment variables")
-
-        self.llm = ChatOpenAI(model_name='gpt-3.5-turbo', openai_api_key=openai_api_key, temperature=0)
+        self.llm = ChatOpenAI(model_name='gpt-4-turbo', openai_api_key=openai_api_key, temperature=0)
 
     def add_propositions(self, propositions: List[str]):
         for proposition in propositions:
@@ -83,16 +135,12 @@ class AgenticChunker:
     def add_proposition(self, proposition: str):
         if self.print_logging:
             print(f"\nAdding: '{proposition}'")
-
-        # If no chunks exist, create a new one
         if len(self.chunks) == 0:
             if self.print_logging:
                 print("No chunks, creating a new one")
             self._create_new_chunk(proposition)
             return
-
         chunk_id = self._find_relevant_chunk(proposition)
-
         if chunk_id:
             if self.print_logging:
                 print(f"Chunk Found ({self.chunks[chunk_id]['chunk_id']}), adding to: {self.chunks[chunk_id]['title']}")
@@ -105,10 +153,14 @@ class AgenticChunker:
     def add_proposition_to_chunk(self, chunk_id: str, proposition: str):
         self.chunks[chunk_id]['propositions'].append(proposition)
         if self.generate_new_metadata_ind:
-            self.chunks[chunk_id]['summary'] = self._update_chunk_summary(self.chunks[chunk_id])
-            self.chunks[chunk_id]['title'] = self._update_chunk_title(self.chunks[chunk_id])
+            joined_props = "\n".join(self.chunks[chunk_id]['propositions'])
+            truncated_props = truncate_text(joined_props, 1000)
+            self.chunks[chunk_id]['summary'] = self._update_chunk_summary(truncated_props,
+                                                                          self.chunks[chunk_id].get('summary', ""))
+            self.chunks[chunk_id]['title'] = self._update_chunk_title(truncated_props,
+                                                                      self.chunks[chunk_id].get('title', ""))
 
-    def _update_chunk_summary(self, chunk: dict) -> str:
+    def _update_chunk_summary(self, propositions_text: str, current_summary: str) -> str:
         PROMPT = ChatPromptTemplate.from_messages(
             [
                 ("system",
@@ -117,13 +169,13 @@ class AgenticChunker:
             ]
         )
         runnable = PROMPT | self.llm
-        new_chunk_summary = runnable.invoke({
-            "proposition": "\n".join(chunk['propositions']),
-            "current_summary": chunk['summary']
-        }).content
-        return new_chunk_summary
+        result = safe_invoke(runnable.invoke, {
+            "proposition": propositions_text,
+            "current_summary": current_summary
+        })
+        return result.content
 
-    def _update_chunk_title(self, chunk: dict) -> str:
+    def _update_chunk_title(self, propositions_text: str, current_title: str) -> str:
         PROMPT = ChatPromptTemplate.from_messages(
             [
                 ("system",
@@ -133,14 +185,15 @@ class AgenticChunker:
             ]
         )
         runnable = PROMPT | self.llm
-        updated_chunk_title = runnable.invoke({
-            "proposition": "\n".join(chunk['propositions']),
-            "current_summary": chunk['summary'],
-            "current_title": chunk['title']
-        }).content
-        return updated_chunk_title
+        result = safe_invoke(runnable.invoke, {
+            "proposition": propositions_text,
+            "current_summary": "",
+            "current_title": current_title
+        })
+        return result.content
 
     def _get_new_chunk_summary(self, proposition: str) -> str:
+        truncated_prop = truncate_text(proposition, 1000)
         PROMPT = ChatPromptTemplate.from_messages(
             [
                 ("system",
@@ -149,20 +202,21 @@ class AgenticChunker:
             ]
         )
         runnable = PROMPT | self.llm
-        new_chunk_summary = runnable.invoke({"proposition": proposition}).content
-        return new_chunk_summary
+        result = safe_invoke(runnable.invoke, {"proposition": truncated_prop})
+        return result.content
 
     def _get_new_chunk_title(self, summary: str) -> str:
+        truncated_summary = truncate_text(summary, 500)
         PROMPT = ChatPromptTemplate.from_messages(
             [
-                ("system",
-                 "Generate a very brief title for a chunk based on its summary. Only respond with the title."),
+                (
+                "system", "Generate a very brief title for a chunk based on its summary. Only respond with the title."),
                 ("user", "Determine the title of the chunk that this summary belongs to:\n{summary}")
             ]
         )
         runnable = PROMPT | self.llm
-        new_chunk_title = runnable.invoke({"summary": summary}).content
-        return new_chunk_title
+        result = safe_invoke(runnable.invoke, {"summary": truncated_summary})
+        return result.content
 
     def _create_new_chunk(self, proposition: str):
         new_chunk_id = str(uuid.uuid4())[:self.id_truncate_limit]
@@ -197,12 +251,12 @@ class AgenticChunker:
             ]
         )
         runnable = PROMPT | self.llm
-        chunk_found = runnable.invoke({
+        result = safe_invoke(runnable.invoke, {
             "proposition": proposition,
             "current_chunk_outline": current_chunk_outline
-        }).content
+        })
+        chunk_found = result.content
 
-        # Define a simple Pydantic model to extract the chunk id
         class ChunkID(BaseModel):
             chunk_id: Optional[str]
 
@@ -261,19 +315,32 @@ def get_embedding(text: str) -> List[float]:
 
 
 # =============================================================================
-# 4. INITIALIZE PINECONE INDEX
+# 4. INITIALIZE PINECONE INDEX USING THE NEW API
 # =============================================================================
 
 def init_pinecone_index(index_name: str, dimension: int):
     pinecone_api_key = os.getenv("PINECONE_API_KEY")
-    pinecone_env = os.getenv("PINECONE_ENV")
-    if not pinecone_api_key or not pinecone_env:
-        raise ValueError("Pinecone API key or environment not set in environment variables")
-    pinecone.init(api_key=pinecone_api_key, environment=pinecone_env)
-    if index_name not in pinecone.list_indexes():
+    if not pinecone_api_key:
+        raise ValueError("Pinecone API key not set in environment variables")
+
+    # Create a Pinecone instance using the API key.
+    pc = Pinecone(api_key=pinecone_api_key)
+
+    # List existing indexes.
+    existing_indexes = pc.list_indexes().names()
+    if index_name not in existing_indexes:
         print(f"Index '{index_name}' does not exist. Creating new index...")
-        pinecone.create_index(index_name, dimension=dimension)
-    index = pinecone.Index(index_name)
+        pc.create_index(
+            name=index_name,
+            dimension=dimension,
+            metric='cosine',
+            spec=ServerlessSpec(
+                cloud='aws',  # Adjust as needed: 'aws', 'gcp', or 'azure'
+                region='us-west-2'  # Change to your region
+            )
+        )
+
+    index = pc.Index(index_name)
     return index
 
 
@@ -282,8 +349,7 @@ def init_pinecone_index(index_name: str, dimension: int):
 # =============================================================================
 
 def main():
-    # Folder containing your PDF books (folder "books" at the same level as this file)
-    pdf_folder_path = "./books"
+    pdf_folder_path = "./books"  # Folder "books" at the same level as this file
     if not os.path.isdir(pdf_folder_path):
         print(f"[red]PDF folder not found: {pdf_folder_path}[/red]")
         return
@@ -300,7 +366,6 @@ def main():
         if not raw_text:
             continue
         cleaned_text = clean_text(raw_text)
-        # Split text into propositions based on double newlines (adjust if needed)
         propositions = [p.strip() for p in cleaned_text.split("\n\n") if p.strip()]
         print(f"[bold blue]Extracted {len(propositions)} propositions from {os.path.basename(pdf_file)}.[/bold blue]")
         all_propositions.extend(propositions)
@@ -309,40 +374,34 @@ def main():
         print("[red]No propositions extracted from any PDFs.[/red]")
         return
 
-    # Initialize AgenticChunker and add propositions
     ac = AgenticChunker()
     ac.add_propositions(all_propositions)
-
-    # Optionally, print out your chunks
     ac.pretty_print_chunks()
-
-    # Get chunks as a dictionary
     chunks = ac.get_chunks(get_type='dict')
 
-    # Initialize Pinecone index
     index_name = os.getenv("PINECONE_INDEX_NAME", "medical-llm-index")
     pinecone_index = init_pinecone_index(index_name, dimension=384)
 
-    # Prepare vectors for upsertion
     vectors = []
     for chunk in chunks.values():
         chunk_text = " ".join(chunk['propositions'])
         embedding = get_embedding(chunk_text)
+        # Truncate the metadata text further to reduce payload size.
+        truncated_chunk_text = truncate_text(chunk_text, 200)
         vector = {
             "id": chunk['chunk_id'],
             "values": embedding,
             "metadata": {
                 "title": chunk['title'],
                 "summary": chunk['summary'],
-                "text": chunk_text
+                "text": truncated_chunk_text
             }
         }
         vectors.append(vector)
 
-    # Upsert vectors into Pinecone
-    upsert_response = pinecone_index.upsert(vectors=vectors)
-    print(f"[bold green]Upserted {len(vectors)} chunks into Pinecone index '{index_name}'.[/bold green]")
-    print("Response:", upsert_response)
+    # Upsert vectors in batches to avoid exceeding request size limits.
+    batch_upsert_vectors(pinecone_index, vectors, batch_size=10)
+    print(f"[bold green]Finished upserting vectors into Pinecone index '{index_name}'.[/bold green]")
 
 
 if __name__ == "__main__":
