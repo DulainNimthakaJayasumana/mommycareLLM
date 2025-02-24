@@ -109,7 +109,7 @@ class AgenticChunker:
             openai_api_key = os.getenv("OPENAI_API_KEY")
         if openai_api_key is None:
             raise ValueError("OPENAI_API_KEY not provided in environment variables.")
-        self.llm = ChatOpenAI(model_name='gpt-4-turbo', openai_api_key=openai_api_key, temperature=0.5)
+        self.llm = ChatOpenAI(model_name='gpt-4-turbo', openai_api_key=openai_api_key, temperature=0.2)
 
     def chunk_document(self, text: str, target_chars: int = 2000, overlap_chars: int = 200) -> List[dict]:
         """Splits the text into overlapping chunks that cover the full document."""
