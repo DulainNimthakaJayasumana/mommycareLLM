@@ -6,6 +6,8 @@ import time
 from typing import Optional, List
 from langchain_openai import ChatOpenAI
 
+
+
 # PDF extraction
 from pdfminer.high_level import extract_text
 
@@ -32,7 +34,7 @@ from langchain.chains import create_extraction_chain_pydantic
 
 # Import OpenAI error handling
 try:
-    from openai.error import RateLimitError
+    from openai.error import RateLimitError # type: ignore
 except ModuleNotFoundError:
     print("[yellow]Warning: Module 'openai.error' not found. Please install it via pip.[/yellow]")
     class RateLimitError(Exception):

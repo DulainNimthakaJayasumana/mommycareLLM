@@ -117,7 +117,7 @@ def generate_answer(query: str, docs: List[dict]) -> str:
     ]
     try:
         chat_response = groq_client.chat.completions.create(
-            model="deepseek-r1-distill-qwen-32b",
+            model="llama-3.3-70b-versatile",
             messages=messages
         )
         answer = chat_response.choices[0].message.content
@@ -134,8 +134,10 @@ def generate_answer(query: str, docs: List[dict]) -> str:
 # Chatbot Conversation Loop
 # ----------------------------
 def chatbot():
-    print("Welcome to the MommyCare Medical Chatbot!")
-    print("You can ask any questions or share your feelings. Type 'thank you' or 'bye' to exit.\n")
+
+    # print("Welcome to the MommyCare Medical Chatbot!")
+    # print("You can ask any questions or share your feelings. Type 'thank you' or 'bye' to exit.\n")
+
     while True:
         query = input("You: ").strip()
         if query.lower() in ["thank you", "thanks", "bye"]:
@@ -147,7 +149,7 @@ def chatbot():
             print(doc.get("text", ""))
             print("---")
         answer = generate_answer(query, docs)
-        print("\nChatbot:", answer)
+        print("\nChatbot:", answer)          
         print("\n")
 
 
