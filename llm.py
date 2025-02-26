@@ -117,7 +117,7 @@ def generate_answer(query: str, docs: List[dict]) -> str:
     ]
     try:
         chat_response = groq_client.chat.completions.create(
-            model="deepseek-r1-distill-qwen-32b",
+            model="llama-3.3-70b-versatile",
             messages=messages
         )
         answer = chat_response.choices[0].message.content
