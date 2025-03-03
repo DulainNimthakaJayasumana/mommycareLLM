@@ -125,8 +125,8 @@ def generate_answer(query: str, docs: List[dict]) -> str:
         answer = f"Error generating answer: {str(e)}"
 
     # Append disclaimer and reference info before finalizing the answer
-    disclaimer = "\n\nDisclaimer: This advice is informational only and is not a substitute for professional medical advice. Please contact your doctor for personalized medical guidance."
-    final_answer = answer + "\n\n" + reference_text + disclaimer
+    #disclaimer = "\n\nDisclaimer: This advice is informational only and is not a substitute for professional medical advice. Please contact your doctor for personalized medical guidance."
+    final_answer = answer + "\n\n" + reference_text #+ disclaimer
     return final_answer
 
 
