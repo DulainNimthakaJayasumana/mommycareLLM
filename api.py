@@ -11,7 +11,9 @@ class QueryRequest(BaseModel):
 @app.post("/get_answer/")
 def get_answer(request: QueryRequest):
     try:
-        docs = get_docs(request.query, top_k=5)
+        english_query = sinhalaToEnglish(request.query)
+
+        docs = get_docs(english_query, top_k=5)
         answer = generate_answer(request.query, docs)
         return {"answer": answer}
     except Exception as e:
@@ -20,12 +22,13 @@ def get_answer(request: QueryRequest):
 @app.post("/get_answer_sinhala/")
 def get_answer_sinhala(request: QueryRequest):
     try:
-        english_query = sinhalaToEnglish(request.query)
-        
-        docs = get_docs(english_query, top_k=5)
-        
+        # First translate Sinhala to English
+        english_query = sinhalaToEnglish(request.query)      
+        # Get documents based on the English query
+        docs = get_docs(english_query, top_k=5)       
+        # Generate answer in English
         english_answer = generate_answer(english_query, docs)
-
+        # Translate the answer back to Sinhala
         sinhala_answer = englishToSinhala(english_answer)
         
         return {"answer": sinhala_answer}
