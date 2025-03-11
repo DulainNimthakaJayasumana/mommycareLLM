@@ -5,6 +5,7 @@ from trans import sinhalaToEnglish, englishToSinhala
 
 app = FastAPI()
 
+
 class QueryRequest(BaseModel):
     query: str
 

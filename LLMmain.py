@@ -125,8 +125,9 @@ def generate_answer(query: str, docs: List[dict]) -> str:
         answer = f"Error generating answer: {str(e)}"
 
     # Append disclaimer and reference info before finalizing the answer
-    disclaimer = "\n\nDisclaimer: This advice is informational only and is not a substitute for professional medical advice. Please contact your doctor for personalized medical guidance."
-    final_answer = answer + "\n\n" + reference_text + disclaimer
+    # disclaimer = "\n\nDisclaimer: This advice is informational only and is not a substitute for professional medical advice. Please contact your doctor for personalized medical guidance."
+    # final_answer = answer + "\n\n" + reference_text + disclaimer
+    final_answer = answer
     return final_answer
 
 
@@ -134,8 +135,8 @@ def generate_answer(query: str, docs: List[dict]) -> str:
 # Chatbot Conversation Loop
 # ----------------------------
 def chatbot():
-    print("Welcome to the MommyCare Medical Chatbot!")
-    print("You can ask any questions or share your feelings. Type 'thank you' or 'bye' to exit.\n")
+    # print("Welcome to the MommyCare Medical Chatbot!")
+    # print("You can ask any questions or share your feelings. Type 'thank you' or 'bye' to exit.\n")
     while True:
         query = input("You: ").strip()
         if query.lower() in ["thank you", "thanks", "bye"]:
