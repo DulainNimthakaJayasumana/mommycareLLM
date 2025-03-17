@@ -76,7 +76,7 @@ async def get_answer_voice(audio_file: UploadFile = File(...)):
             try:
                 os.unlink(temp_audio_path)
             except Exception:
-                pass  # If we still can't delete it, just ignore
+                pass  
 
 if __name__ == "__main__":
     import uvicorn
