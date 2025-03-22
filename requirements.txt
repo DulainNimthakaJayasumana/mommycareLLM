@@ -1,24 +1,29 @@
-fastapi~=0.115.10
-uvicorn==0.34.0
-pydantic==2.10.6
-torch==2.6.0
-transformers==4.49.0
-tokenizers==0.21.0
-numpy==1.26.4
-requests==2.32.3
-python-dotenv==1.0.1
-deep-translator==1.11.4
-pinecone-client~=5.0.1
-python-telegram-bot~=20.3
-speechrecognition~=3.14.1
-pdfminer.six==20221105
-emoji~=2.14.1
-groq~=0.18.0
-nest-asyncio~=1.6.0
-django-emoji~=2.2.2
-langchain-openai~=0.3.6
-pdfminer~=20191125
-rich~=13.9.4
-langchain~=0.3.19
-langchain-community~=0.3.17
-openai~=1.63.2
+# Core dependencies
+python-dotenv>=1.0.0
+nest-asyncio>=1.5.7
+emoji>=2.8.0
+pinecone>=3.0.0
+semantic-router>=0.0.38
+
+torch>=2.0.0
+
+# AI and NLP libraries
+transformers>=4.35.0
+pdfminer.six>=20221105
+langchain>=0.0.267
+langchain-openai>=0.0.1
+langchain-community>=0.0.1
+
+# API and Web
+python-telegram-bot>=20.4
+fastapi>=0.103.1
+uvicorn>=0.23.2
+python-multipart>=0.0.6
+
+# Utilities
+speechrecognition>=3.10.0
+numpy>=1.24.0
+rich>=13.5.3
+groq>=0.4.0
+deep-translator>=1.11.4
+pydantic>=2.4.2
