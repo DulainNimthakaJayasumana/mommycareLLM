@@ -103,12 +103,11 @@ def generate_answer(query: str, docs: List[dict]) -> str:
 
     # Prepare reference info (we assume 'title' holds source info)
     references = [doc.get("title", "Unknown Source") for doc in docs]
-    reference_text = "Sources: " + ", ".join(references)
-
+    #reference_text = "Sources: " + ", ".join(references)
+#"If the answer involves medical advice, always append a disclaimer: 'Disclaimer: This advice is informational only and is not a substitute for professional medical advice. Please contact your doctor for personalized medical guidance.'\n\n"
     system_message = (
             "You are a compassionate and helpful medical chatbot designed for mothers. "
             "Answer questions in a friendly and supportive manner. "
-            "If the answer involves medical advice, always append a disclaimer: 'Disclaimer: This advice is informational only and is not a substitute for professional medical advice. Please contact your doctor for personalized medical guidance.'\n\n"
             "CONTEXT:\n" + context
     )
     messages = [
@@ -125,8 +124,9 @@ def generate_answer(query: str, docs: List[dict]) -> str:
         answer = f"Error generating answer: {str(e)}"
 
     # Append disclaimer and reference info before finalizing the answer
-    disclaimer = "\n\nDisclaimer: This advice is informational only and is not a substitute for professional medical advice. Please contact your doctor for personalized medical guidance."
-    final_answer = answer + "\n\n" + reference_text + disclaimer
+    #disclaimer = "\n\nDisclaimer: This advice is informational only and is not a substitute for professional medical advice. Please contact your doctor for personalized medical guidance."
+    #final_answer = answer + "\n\n" + reference_text + disclaimer
+    final_answer = answer + "\n\n"
     return final_answer
 
 
