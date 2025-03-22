@@ -1,17 +1,23 @@
-FROM python:3.12
+# Use the official Python slim image
+FROM python:3.11-slim
 
 # Set the working directory
 WORKDIR /app
 
-# Copy requirements and install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Upgrade pip
+RUN pip install --upgrade pip
 
-# Copy app files
+# Copy the requirements file
+COPY requirements.txt .
+
+# Install dependencies with an increased timeout
+RUN pip install --no-cache-dir --default-timeout=300 -r requirements.txt
+
+# Copy the rest of the application
 COPY . .
 
-# Expose port 8000
+# Expose the FastAPI port
 EXPOSE 8000
 
-# Start FastAPI server
-CMD ["uvicorn", "main:api", "--host", "0.0.0.0", "--port", "8000"]
+# Run both FastAPI and Telegram bot using a script
+CMD ["bash", "-c", "uvicorn api:app --host 0.0.0.0 --port 8000 & python telegram_bot.py"]
