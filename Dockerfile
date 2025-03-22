@@ -1,23 +1,44 @@
-# Use the official Python slim image
-FROM python:3.11-slim
+# Use Python 3.10 as the base image
+FROM python:3.10-slim
 
-# Set the working directory
+# Set the working directory in the container
 WORKDIR /app
 
-# Upgrade pip
-RUN pip install --upgrade pip
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on
 
-# Copy the requirements file
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libffi-dev \
+    libnss3 \
+    git \
+    supervisor && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first (for better caching)
 COPY requirements.txt .
 
-# Install dependencies with an increased timeout
-RUN pip install --no-cache-dir --default-timeout=300 -r requirements.txt
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application
+# Copy the entire project
 COPY . .
 
-# Expose the FastAPI port
-EXPOSE 8000
+# Create directory for PDF books
+RUN mkdir -p /app/books
 
-# Run both FastAPI and Telegram bot using a script
-CMD ["bash", "-c", "uvicorn api:app --host 0.0.0.0 --port 8000 & python telegram_bot.py"]
+# Copy the supervisor configuration file
+COPY supervisor.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Command to run supervisor
+CMD ["/usr/bin/supervisord"]
