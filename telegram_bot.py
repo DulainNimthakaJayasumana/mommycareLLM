@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 def is_sinhala(text: str) -> bool:
     """Detect if the text contains Sinhala characters."""
-    return any('\u0D80' <= char <= '\u0DFF' for char in text)
+    return any('\u0D80' <= char <= '\u0DFF' for char     in text)
 
 def contains_emoji(text: str) -> bool:
     """Check if the text contains emojis."""
