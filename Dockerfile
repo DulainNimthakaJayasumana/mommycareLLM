@@ -4,15 +4,15 @@ FROM python:3.10
 # Set the working directory
 WORKDIR /app
 
-# Copy all files to the container
-COPY . .
-
-# Install dependencies
+# Copy requirements first for better caching
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy and run the startup script
-COPY start.sh /start.sh
-RUN chmod +x /start.sh
+# Copy the application code
+COPY . .
 
-# Run the script
-CMD ["/bin/sh", "/start.sh"]
+# Expose the port that will be used
+EXPOSE 8080
+
+# Run the FastAPI application directly
+CMD ["python", "api.py"]
