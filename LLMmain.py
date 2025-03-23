@@ -25,6 +25,7 @@ pinecone_api_key = os.getenv("PINECONE_API_KEY")
 if not pinecone_api_key:
     raise ValueError("PINECONE_API_KEY not set in .env file.")
 
+# Use the provided index name or a default
 pinecone_index_name = os.getenv("PINECONE_INDEX_NAME", "medical-llm-index")
 
 groq_api_key = os.getenv("GROQ_API_KEY")
@@ -46,7 +47,9 @@ if hasattr(semantic_router.encoders.base, "DenseEncoder"):
 # Initialize Pinecone
 # ----------------------------
 pc = Pinecone(api_key=pinecone_api_key)
-spec = ServerlessSpec(cloud="aws", region="us-west-2")
+# Use the region from the environment (defaulting to us-east-1 if not set)
+pinecone_env = os.getenv("PINECONE_ENV", "us-east-1")
+spec = ServerlessSpec(cloud="aws", region=pinecone_env)
 
 existing_indexes = [idx["name"] for idx in pc.list_indexes()]
 if pinecone_index_name in existing_indexes:
