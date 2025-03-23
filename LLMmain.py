@@ -57,15 +57,8 @@ else:
 index = pc.Index(pinecone_index_name)
 time.sleep(1)
 
-# ----------------------------
-# Initialize Semantic Encoder
-# ----------------------------
 encoder = HuggingFaceEncoder(name="dwzhu/e5-base-4k")
 
-
-# ----------------------------
-# Define Retrieval Function
-# ----------------------------
 def get_docs(query: str, top_k: int = 5) -> List[dict]:
     """
     Encodes the query and retrieves top_k matching chunks from the Pinecone index.
@@ -80,10 +73,6 @@ def get_docs(query: str, top_k: int = 5) -> List[dict]:
     # Return full metadata for references (e.g. title, summary, text)
     return [match["metadata"] for match in matches]
 
-
-# ----------------------------
-# Initialize Groq Client and Define Answer Generation
-# ----------------------------
 os.environ["GROQ_API_KEY"] = groq_api_key
 groq_client = Groq(api_key=groq_api_key)
 
