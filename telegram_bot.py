@@ -1,10 +1,3 @@
-# Minimal Django settings configuration for emoji package
-import django
-from django.conf import settings
-
-if not settings.configured:
-    settings.configure(DEBUG=True)
-
 import os
 import logging
 import asyncio
