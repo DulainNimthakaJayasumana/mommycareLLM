@@ -1,26 +1,36 @@
 import os
 import time
-from typing import List
+import uuid
+import re
+import glob
+from typing import Optional, List
+import asyncio
 
 # Disable tokenizers parallelism to avoid warnings
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-# Load environment variables from .env
+# Load environment variables from .env file
 from dotenv import load_dotenv
 
 load_dotenv()
 
+# ----------------------------
 # Pinecone client using the new API:
+# ----------------------------
 from pinecone import Pinecone, ServerlessSpec
 
+# ----------------------------
 # Semantic encoder from semantic_router
+# ----------------------------
 from semantic_router.encoders import HuggingFaceEncoder
 
+# ----------------------------
 # Groq client for Llama 70B generation
+# ----------------------------
 from groq import Groq
 
 # ----------------------------
-# Retrieve API Keys from .env
+# Retrieve API Keys from environment
 # ----------------------------
 pinecone_api_key = os.getenv("PINECONE_API_KEY")
 if not pinecone_api_key:
@@ -33,7 +43,7 @@ if not groq_api_key:
     raise ValueError("GROQ_API_KEY not set in .env file.")
 
 # ----------------------------
-# Initialize Pinecone
+# Initialize Pinecone Index
 # ----------------------------
 pc = Pinecone(api_key=pinecone_api_key)
 spec = ServerlessSpec(cloud="aws", region="us-west-2")
@@ -42,9 +52,11 @@ if pinecone_index_name in existing_indexes:
     desc = pc.describe_index(pinecone_index_name)
     if desc["dimension"] != 768:
         raise ValueError(
-            f"Index '{pinecone_index_name}' exists with dimension {desc['dimension']}, but expected 768. Please delete the index or use a new name.")
+            f"Index '{pinecone_index_name}' exists with dimension {desc['dimension']}, but expected 768. Please delete the index or use a new name."
+        )
 else:
     print(f"Index '{pinecone_index_name}' does not exist. Creating it...")
+    # noinspection PyTypeChecker
     pc.create_index(
         name=pinecone_index_name,
         dimension=768,
@@ -57,8 +69,21 @@ else:
 index = pc.Index(pinecone_index_name)
 time.sleep(1)
 
+# ----------------------------
+# Initialize Semantic Encoder
+# ----------------------------
 encoder = HuggingFaceEncoder(name="dwzhu/e5-base-4k")
 
+# ----------------------------
+# Initialize Groq Client
+# ----------------------------
+os.environ["GROQ_API_KEY"] = groq_api_key
+groq_client = Groq(api_key=groq_api_key)
+
+
+# ----------------------------
+# Retrieval Function: get_docs
+# ----------------------------
 def get_docs(query: str, top_k: int = 5) -> List[dict]:
     """
     Encodes the query and retrieves top_k matching chunks from the Pinecone index.
@@ -70,34 +95,27 @@ def get_docs(query: str, top_k: int = 5) -> List[dict]:
     if not matches:
         print("[red]No matching documents found.[/red]")
         return []
-    # Return full metadata for
-    # references (e.g. title, summary, text)
     return [match["metadata"] for match in matches]
 
-os.environ["GROQ_API_KEY"] = groq_api_key
-groq_client = Groq(api_key=groq_api_key)
 
-
-def generate_answer(query: str, docs: List[dict]) -> str:
+# ----------------------------
+# Answer Generation using Groq (async version)
+# ----------------------------
+async def generate_answer_async(query: str, docs: List[dict]) -> str:
     """
     Constructs a prompt using the retrieved documents as context and the user's query,
-    then generates an answer using Groq's chat API with the Llama 70B model.
-    The answer is then appended with a disclaimer and references.
+    then generates an answer using Groq's chat API with a 30-second timeout.
     """
     if not docs:
-        return "I'm sorry, I couldn't find any relevant information. Please consult your doctor for medical advice."
+        return "I'm sorry, I couldn't find any relevant information."
 
-    # Prepare context text (here we assume 'text' is a short snippet from the chunk)
+    # Build the context from the 'text' snippets in docs
     context_texts = [doc.get("text", "") for doc in docs]
     context = "\n---\n".join(context_texts)
 
-    # Prepare reference info (we assume 'title' holds source info)
-    references = [doc.get("title", "Unknown Source") for doc in docs]
-    #reference_text = "Sources: " + ", ".join(references)
-#"If the answer involves medical advice, always append a disclaimer: 'Disclaimer: This advice is informational only and is not a substitute for professional medical advice. Please contact your doctor for personalized medical guidance.'\n\n"
     system_message = (
             "You are a compassionate and helpful medical chatbot designed for mothers. "
-            "Answer questions in a friendly and supportive manner. "
+            "Answer the question clearly and concisely based solely on the provided context.\n\n"
             "CONTEXT:\n" + context
     )
     messages = [
@@ -105,23 +123,29 @@ def generate_answer(query: str, docs: List[dict]) -> str:
         {"role": "user", "content": query}
     ]
     try:
-        chat_response = groq_client.chat.completions.create(
-            model="llama3-70b-8192",
-            messages=messages
+        # noinspection PyTypeChecker
+        response = await asyncio.wait_for(
+            groq_client.chat.completions.create(
+                model="llama3-70b-8192",
+                messages=messages
+            ),
+            timeout=30
         )
-        answer = chat_response.choices[0].message.content
+        answer = response.choices[0].message.content
+    except asyncio.TimeoutError:
+        answer = "The request timed out. Please try again later."
     except Exception as e:
         answer = f"Error generating answer: {str(e)}"
+    return answer
 
-    # Append disclaimer and reference info before finalizing the answer
-    #disclaimer = "\n\nDisclaimer: This advice is informational only and is not a substitute for professional medical advice. Please contact your doctor for personalized medical guidance."
-    #final_answer = answer + "\n\n" + reference_text + disclaimer
-    final_answer = answer + "\n\n"
-    return final_answer
+
+def generate_answer(query: str, docs: List[dict]) -> str:
+    """Synchronous wrapper to run the async generate_answer_async."""
+    return asyncio.run(generate_answer_async(query, docs))
 
 
 # ----------------------------
-# Chatbot Conversation Loop
+# Chatbot Interactive Loop (for local testing)
 # ----------------------------
 def chatbot():
     print("Welcome to the MommyCare Medical Chatbot!")
