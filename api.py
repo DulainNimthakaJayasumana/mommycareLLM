@@ -5,6 +5,7 @@ from trans import sinhalaToEnglish, englishToSinhala
 import speech_recognition as sr
 import os
 import tempfile
+import uvicorn
 
 app = FastAPI()
 
@@ -62,5 +63,5 @@ async def get_answer_voice(audio_file: UploadFile = File(...)):
                 pass
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8080))  # Ensure PORT is set correctly for Cloud Run
+    uvicorn.run(app, host="0.0.0.0", port=port)
