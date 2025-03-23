@@ -39,20 +39,17 @@ async def get_answer_voice(audio_file: UploadFile = File(...)):
     """Handles voice queries, transcribes them, and returns an answer."""
     temp_audio_path = None
     try:
-        # Save the uploaded audio file
         fd, temp_audio_path = tempfile.mkstemp(suffix=".wav")
         os.close(fd)
         content = await audio_file.read()
         with open(temp_audio_path, "wb") as buffer:
             buffer.write(content)
 
-        # Process the audio file using SpeechRecognition
         recognizer = sr.Recognizer()
         with sr.AudioFile(temp_audio_path) as source:
             audio_data = recognizer.record(source)
             text_query = recognizer.recognize_google(audio_data)
 
-        # Retrieve and generate an answer
         docs = get_docs(text_query, top_k=5)
         answer = generate_answer(text_query, docs)
 
@@ -79,7 +76,5 @@ def home():
 if __name__ == "__main__":
     import uvicorn
     import os
-
-    # Ensure the app runs on Cloud Run required port (8080)
     port = int(os.getenv("PORT", 8080))
     uvicorn.run(app, host="0.0.0.0", port=port)
