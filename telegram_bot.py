@@ -27,7 +27,7 @@ if not TELEGRAM_BOT_TOKEN:
     raise ValueError("TELEGRAM_BOT_TOKEN is not set in the .env file.")
 
 # Import your LLM and translation functions
-from llmMain import get_docs, generate_answer
+from LLMmain import get_docs, generate_answer
 from trans import sinhalaToEnglish, englishToSinhala
 
 # Set up logging
