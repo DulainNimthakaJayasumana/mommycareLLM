@@ -1,29 +1,21 @@
-FROM python:3.10-slim
+# Use an official Python runtime as a parent image
+FROM python:3.10
 
+# Set the working directory in the container
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libportaudio2 \
-    libsndfile1 \
-    ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements first for better caching
+# Copy only the requirements file first (to leverage caching)
 COPY requirements.txt .
+
+# Upgrade pip before installing dependencies
+RUN python -m pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY api.py .
-COPY LLMmain.py .
-COPY trans.py .
+# Copy the rest of the application code
+COPY . .
 
-# Create a directory for temporary audio files
-RUN mkdir -p /tmp/audio
-
-# Expose the port the app runs on
+# Expose the FastAPI port
 EXPOSE 8080
 
-# Command to run the application
-CMD ["python", "api.py"]
+# Set the default command to run the application
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8080"]

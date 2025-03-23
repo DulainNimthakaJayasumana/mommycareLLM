@@ -1,13 +1,12 @@
 import os
 import time
-from typing import List
+from typing import List, Optional  # Ensure compatibility with Python 3.9
 
 # Disable tokenizers parallelism to avoid warnings
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # Load environment variables from .env
 from dotenv import load_dotenv
-
 load_dotenv()
 
 # Pinecone client using the new API:
@@ -33,16 +32,30 @@ if not groq_api_key:
     raise ValueError("GROQ_API_KEY not set in .env file.")
 
 # ----------------------------
+# Fix Type Hinting Issue in semantic_router for Python 3.9
+# ----------------------------
+import semantic_router.encoders.base
+if hasattr(semantic_router.encoders.base, "DenseEncoder"):
+    setattr(
+        semantic_router.encoders.base.DenseEncoder,
+        "set_score_threshold",
+        lambda cls, v: v  # Workaround for `float | None` error
+    )
+
+# ----------------------------
 # Initialize Pinecone
 # ----------------------------
 pc = Pinecone(api_key=pinecone_api_key)
 spec = ServerlessSpec(cloud="aws", region="us-west-2")
+
 existing_indexes = [idx["name"] for idx in pc.list_indexes()]
 if pinecone_index_name in existing_indexes:
     desc = pc.describe_index(pinecone_index_name)
     if desc["dimension"] != 768:
         raise ValueError(
-            f"Index '{pinecone_index_name}' exists with dimension {desc['dimension']}, but expected 768. Please delete the index or use a new name.")
+            f"Index '{pinecone_index_name}' exists with dimension {desc['dimension']}, but expected 768. "
+            "Please delete the index or use a new name."
+        )
 else:
     print(f"Index '{pinecone_index_name}' does not exist. Creating it...")
     pc.create_index(
@@ -54,10 +67,12 @@ else:
     )
     while not pc.describe_index(pinecone_index_name).status.get("ready", False):
         time.sleep(1)
+
 index = pc.Index(pinecone_index_name)
 time.sleep(1)
 
 encoder = HuggingFaceEncoder(name="dwzhu/e5-base-4k")
+
 
 def get_docs(query: str, top_k: int = 5) -> List[dict]:
     """
@@ -70,8 +85,8 @@ def get_docs(query: str, top_k: int = 5) -> List[dict]:
     if not matches:
         print("[red]No matching documents found.[/red]")
         return []
-    # Return full metadata for references (e.g. title, summary, text)
     return [match["metadata"] for match in matches]
+
 
 os.environ["GROQ_API_KEY"] = groq_api_key
 groq_client = Groq(api_key=groq_api_key)
@@ -86,18 +101,13 @@ def generate_answer(query: str, docs: List[dict]) -> str:
     if not docs:
         return "I'm sorry, I couldn't find any relevant information. Please consult your doctor for medical advice."
 
-    # Prepare context text (here we assume 'text' is a short snippet from the chunk)
     context_texts = [doc.get("text", "") for doc in docs]
     context = "\n---\n".join(context_texts)
 
-    # Prepare reference info (we assume 'title' holds source info)
-    references = [doc.get("title", "Unknown Source") for doc in docs]
-    #reference_text = "Sources: " + ", ".join(references)
-#"If the answer involves medical advice, always append a disclaimer: 'Disclaimer: This advice is informational only and is not a substitute for professional medical advice. Please contact your doctor for personalized medical guidance.'\n\n"
     system_message = (
-            "You are a compassionate and helpful medical chatbot designed for mothers. "
-            "Answer questions in a friendly and supportive manner. "
-            "CONTEXT:\n" + context
+        "You are a compassionate and helpful medical chatbot designed for mothers. "
+        "Answer questions in a friendly and supportive manner. "
+        "CONTEXT:\n" + context
     )
     messages = [
         {"role": "system", "content": system_message},
@@ -112,9 +122,6 @@ def generate_answer(query: str, docs: List[dict]) -> str:
     except Exception as e:
         answer = f"Error generating answer: {str(e)}"
 
-    # Append disclaimer and reference info before finalizing the answer
-    #disclaimer = "\n\nDisclaimer: This advice is informational only and is not a substitute for professional medical advice. Please contact your doctor for personalized medical guidance."
-    #final_answer = answer + "\n\n" + reference_text + disclaimer
     final_answer = answer + "\n\n"
     return final_answer
 

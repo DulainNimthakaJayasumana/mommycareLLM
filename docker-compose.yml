@@ -1,15 +1,8 @@
-version: '3.8'
-
+version: "3.8"
 services:
-  mommycare-api:
-    container_name: mommycare-api
-    build:
-      context: .
-      dockerfile: Dockerfile
+  mommycarellm:
+    build: .
     ports:
       - "8080:8080"
     env_file:
       - .env
-    volumes:
-      - ./:/app
-    restart: unless-stopped
