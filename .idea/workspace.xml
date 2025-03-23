@@ -4,7 +4,13 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1950e1b7-562c-41b6-aef9-2444b1fe3360" name="Changes" comment="telegram" />
+
+    <list default="true" id="1950e1b7-562c-41b6-aef9-2444b1fe3360" name="Changes" comment="telegram">
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/api.py" beforeDir="false" afterPath="$PROJECT_DIR$/api.py" afterDir="false" />
+    </list>
+
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -42,28 +48,29 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Docker.Dockerfile.executor&quot;: &quot;Run&quot;,
-    &quot;Python.LLMmain.executor&quot;: &quot;Run&quot;,
-    &quot;Python.agenticChunking.executor&quot;: &quot;Run&quot;,
-    &quot;Python.api.executor&quot;: &quot;Run&quot;,
-    &quot;Python.evaluate_accuracy.executor&quot;: &quot;Run&quot;,
-    &quot;Python.sql.executor&quot;: &quot;Run&quot;,
-    &quot;Python.telegram_bot.executor&quot;: &quot;Run&quot;,
-    &quot;Python.trans.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/dulainjayasumana/Documents/GitHub/mommycareLLM&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Docker.Dockerfile.executor": "Run",
+    "Python.LLMmain.executor": "Run",
+    "Python.agenticChunking.executor": "Run",
+    "Python.api.executor": "Run",
+    "Python.evaluate_accuracy.executor": "Run",
+    "Python.sql.executor": "Run",
+    "Python.telegram_bot.executor": "Run",
+    "Python.trans.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "git-widget-placeholder": "Rebasing ISira__new__2",
+    "last_opened_file_path": "/Users/dulainjayasumana/Documents/GitHub/mommycareLLM",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$" />
@@ -166,8 +173,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-5c90d61e3bab-JavaScript-PY-242.24807.21" />
-        <option value="bundled-python-sdk-00717045f1d3-399fe30bd8c1-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-242.24807.21" />
+        <option value="bundled-js-predefined-d6986cc7102b-822845ee3bb5-JavaScript-PY-243.23654.177" />
+        <option value="bundled-python-sdk-91d3a02ef49d-43b77aa2d136-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-243.23654.177" />
       </set>
     </attachedChunks>
   </component>
@@ -187,6 +194,7 @@
       <workItem from="1742201757998" duration="9402000" />
       <workItem from="1742402018665" duration="10883000" />
       <workItem from="1742670364278" duration="11240000" />
+      <workItem from="1742731204746" duration="364000" />
     </task>
     <servers />
   </component>
