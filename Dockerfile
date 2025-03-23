@@ -1,27 +1,34 @@
-# Use an official Python runtime as a parent image
-FROM python:3.9-slim
+# Use Python 3.10-slim as the base image
+FROM python:3.10-slim
 
 # Set working directory
 WORKDIR /app
 
-# Copy requirements file (if you have one)
-# If you don't have a requirements.txt file, you should create one with all your dependencies
+# Copy requirements file first for dependency caching
 COPY requirements.txt .
 
-# Install any needed packages specified in requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# Install system dependencies (for pdfminer, etc.)
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libxml2-dev \
+    libxslt1-dev \
+    zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
 # Copy the project files into the container
 COPY . /app/
 
-# Make port available if your API needs it (adjust as needed)
+# Expose the port for your API (if needed)
 EXPOSE 8080
 
 # Install supervisor to manage multiple processes
 RUN apt-get update && apt-get install -y supervisor && apt-get clean
 
-# Configure supervisor
+# Copy supervisor configuration file
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Run supervisord when the container launches
+# Run supervisor when the container launches
 CMD ["/usr/bin/supervisord"]
