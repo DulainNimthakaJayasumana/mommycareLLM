@@ -1,89 +1,115 @@
-import csv
-import os
-from LLMmain import get_docs, generate_answer
-from trans import sinhalaToEnglish, englishToSinhala
-from dotenv import load_dotenv
-from nltk.translate.bleu_score import sentence_bleu
+"""
+evaluation_metrics.py
 
-# Load environment variables from .env
-load_dotenv()
+This script evaluates generated text against a reference text using four metrics:
+  • ROUGE: Measures n‑gram overlaps (recall) between generated and reference text.
+  • METEOR: Aligns words using exact matches, synonyms, and stems.
+  • BERTScore: Uses contextual embeddings to capture semantic similarity.
+  • CIDEr: Uses TF-IDF weighted n‑gram matching (commonly used in caption evaluation).
 
-def load_test_cases(csv_path: str) -> list:
-    """
-    Load test cases from a CSV file.
-    CSV should have columns: 'question' and 'ground_truth'
-    """
-    test_cases = []
-    with open(csv_path, newline='', encoding='utf-8') as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            test_cases.append(row)
-    return test_cases
+Before running this script, install the required packages:
+    pip install rouge-score nltk bert-score
 
-def evaluate_bleu_score(reference: str, candidate: str) -> float:
+For CIDEr, you need the pycocoevalcap package. Clone and install it as follows:
+    git clone https://github.com/salaniz/pycocoevalcap.git
+    cd pycocoevalcap
+    pip install -e .
+
+If CIDEr is not installed, the code will skip its evaluation.
+"""
+
+import ssl
+import nltk
+from rouge_score import rouge_scorer
+from nltk.translate import meteor_score
+from bert_score import score as bert_score
+from pycocoevalcap.cider.cider import Cider
+
+# Fix SSL certificate verification issue for NLTK downloads (if needed)
+try:
+    _create_unverified_https_context = ssl._create_unverified_context
+except AttributeError:
+    pass
+else:
+    ssl._create_default_https_context = _create_unverified_https_context
+
+# Download necessary NLTK data resources, including 'punkt_tab'
+nltk.download('punkt', quiet=True)
+nltk.download('punkt_tab', quiet=True)
+nltk.download('wordnet', quiet=True)
+
+# Try importing CIDEr from pycocoevalcap
+try:
+    from pycocoevalcap.cider.cider import Cider
+    cider_available = True
+except ImportError:
+    cider_available = False
+    print("CIDEr evaluation not available. Please install pycocoevalcap for CIDEr scores.")
+
+def evaluate_rouge(generated: str, reference: str) -> dict:
     """
-    Compute the BLEU score for a candidate answer against the reference.
-    (Tokenization here is done via simple split; consider using a better tokenizer for production.)
+    Compute ROUGE-1, ROUGE-2, and ROUGE-L scores.
     """
-    ref_tokens = reference.split()
-    cand_tokens = candidate.split()
-    # BLEU score expects a list of reference token lists
-    score = sentence_bleu([ref_tokens], cand_tokens)
+    scorer = rouge_scorer.RougeScorer(['rouge1', 'rouge2', 'rougeL'], use_stemmer=True)
+    scores = scorer.score(reference, generated)
+    return scores
+
+def evaluate_meteor(generated: str, reference: str) -> float:
+    """
+    Compute the METEOR score.
+    Tokenize both the generated and reference texts before computing the score.
+    """
+    # Tokenize using nltk.word_tokenize
+    tokenized_generated = nltk.word_tokenize(generated)
+    tokenized_reference = nltk.word_tokenize(reference)
+    # Pass the token lists to the meteor function.
+    score = meteor_score.single_meteor_score(tokenized_reference, tokenized_generated)
     return score
 
-def main():
-    csv_path = "test_cases.csv"  # Path to your CSV file containing test cases
-    test_cases = load_test_cases(csv_path)
-    total_cases = len(test_cases)
-    total_bleu = 0.0
-    results = []
+def evaluate_bert_score(generated: str, reference: str) -> float:
+    """
+    Compute the BERTScore F1.
+    """
+    # bert_score.score() expects lists of strings.
+    P, R, F1 = bert_score([generated], [reference], lang="en", verbose=False)
+    return F1.item()
 
-    for case in test_cases:
-        question = case['question']
-        ground_truth = case['ground_truth']
+def evaluate_cider(generated: str, reference: str):
+    """
+    Compute the CIDEr score.
+    The pycocoevalcap package expects inputs as dictionaries.
+    """
+    if not cider_available:
+        print("CIDEr metric is not available. Skipping CIDEr evaluation.")
+        return None
+    # Prepare dictionaries with one key-value pair.
+    sample_id = "0"
+    gts = {sample_id: [reference]}  # list of reference sentences
+    res = {sample_id: [generated]}  # list of generated sentences
+    cider_scorer = Cider()
+    score, _ = cider_scorer.compute_score(gts, res)
+    return score
 
-        # If the question is in Sinhala, translate to English for processing.
-        if any('\u0D80' <= char <= '\u0DFF' for char in question):
-            english_query = sinhalaToEnglish(question)
-        else:
-            english_query = question
+if __name__ == '__main__':
+    # Example texts (modify these with your own generated and reference texts)
+    generated_text = (
+        "Secondary postpartum hemorrhage occurs when heavy bleeding happens after 24 hours up to 12 weeks postpartum."
+    )
+    reference_text = (
+        "Excessive bleeding from the birth canal occurring between 24 hours and 12 weeks postnatally."
+    )
 
-        # Retrieve documents and generate an answer using the LLM.
-        docs = get_docs(english_query, top_k=5)
-        generated_answer = generate_answer(english_query, docs)
+    # Evaluate each metric
+    rouge_scores = evaluate_rouge(generated_text, reference_text)
+    meteor = evaluate_meteor(generated_text, reference_text)
+    bert = evaluate_bert_score(generated_text, reference_text)
+    cider = evaluate_cider(generated_text, reference_text)
 
-        # If original question was Sinhala, translate generated answer back to Sinhala.
-        if any('\u0D80' <= char <= '\u0DFF' for char in question):
-            generated_answer = englishToSinhala(generated_answer)
+    # Print the evaluation results
+    print("ROUGE scores:")
+    for key, value in rouge_scores.items():
+        print(f"  {key}: {value}")
 
-        bleu = evaluate_bleu_score(ground_truth, generated_answer)
-        total_bleu += bleu
-
-        results.append({
-            "question": question,
-            "ground_truth": ground_truth,
-            "generated_answer": generated_answer,
-            "bleu_score": bleu
-        })
-
-        print("Question:", question)
-        print("Ground Truth:", ground_truth)
-        print("Generated Answer:", generated_answer)
-        print(f"BLEU Score: {bleu:.4f}")
-        print("---")
-
-    avg_bleu = total_bleu / total_cases if total_cases > 0 else 0.0
-    print(f"Evaluated {total_cases} test cases. Average BLEU Score: {avg_bleu:.4f}")
-
-    # Optionally, save the results to a CSV file for reporting.
-    output_file = "evaluation_results.csv"
-    with open(output_file, "w", newline="", encoding="utf-8") as csvfile:
-        fieldnames = ["question", "ground_truth", "generated_answer", "bleu_score"]
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
-        for res in results:
-            writer.writerow(res)
-    print(f"Results saved to {output_file}")
-
-if __name__ == "__main__":
-    main()
+    print("\nMETEOR score:", meteor)
+    print("BERTScore (F1):", bert)
+    print("CIDEr score:", cider)
