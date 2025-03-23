@@ -70,7 +70,8 @@ def get_docs(query: str, top_k: int = 5) -> List[dict]:
     if not matches:
         print("[red]No matching documents found.[/red]")
         return []
-    # Return full metadata for references (e.g. title, summary, text)
+    # Return full metadata for
+    # references (e.g. title, summary, text)
     return [match["metadata"] for match in matches]
 
 os.environ["GROQ_API_KEY"] = groq_api_key
