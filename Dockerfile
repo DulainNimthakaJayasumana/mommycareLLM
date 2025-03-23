@@ -16,3 +16,4 @@ RUN chmod +x /start.sh
 
 # Run the script
 CMD ["/bin/sh", "/start.sh"]
+
