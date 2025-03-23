@@ -13,6 +13,7 @@ class QueryRequest(BaseModel):
 
 @app.post("/get_answer/")
 def get_answer(request: QueryRequest):
+    """Handles text queries and generates an answer."""
     try:
         english_query = sinhalaToEnglish(request.query)
         docs = get_docs(english_query, top_k=5)
@@ -23,6 +24,7 @@ def get_answer(request: QueryRequest):
 
 @app.post("/get_answer_sinhala/")
 def get_answer_sinhala(request: QueryRequest):
+    """Handles Sinhala text queries, translates them, and returns an answer in Sinhala."""
     try:
         english_query = sinhalaToEnglish(request.query)
         docs = get_docs(english_query, top_k=5)
@@ -34,20 +36,28 @@ def get_answer_sinhala(request: QueryRequest):
 
 @app.post("/get_answer_voice/")
 async def get_answer_voice(audio_file: UploadFile = File(...)):
+    """Handles voice queries, transcribes them, and returns an answer."""
     temp_audio_path = None
     try:
+        # Save the uploaded audio file
         fd, temp_audio_path = tempfile.mkstemp(suffix=".wav")
         os.close(fd)
         content = await audio_file.read()
         with open(temp_audio_path, "wb") as buffer:
             buffer.write(content)
+
+        # Process the audio file using SpeechRecognition
         recognizer = sr.Recognizer()
         with sr.AudioFile(temp_audio_path) as source:
             audio_data = recognizer.record(source)
             text_query = recognizer.recognize_google(audio_data)
+
+        # Retrieve and generate an answer
         docs = get_docs(text_query, top_k=5)
         answer = generate_answer(text_query, docs)
+
         return {"query": text_query, "answer": answer}
+    
     except sr.UnknownValueError:
         raise HTTPException(status_code=400, detail="Speech could not be understood")
     except sr.RequestError as e:
@@ -61,6 +71,15 @@ async def get_answer_voice(audio_file: UploadFile = File(...)):
             except Exception:
                 pass
 
+@app.get("/")
+def home():
+    """Root endpoint to check if the API is running."""
+    return {"message": "MommyCare Bot API is running!"}
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import os
+
+    # Ensure the app runs on Cloud Run required port (8080)
+    port = int(os.getenv("PORT", 8080))
+    uvicorn.run(app, host="0.0.0.0", port=port)
