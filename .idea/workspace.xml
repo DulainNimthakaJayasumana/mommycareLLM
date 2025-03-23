@@ -4,12 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1950e1b7-562c-41b6-aef9-2444b1fe3360" name="Changes" comment="telegram">
-      <change afterPath="$PROJECT_DIR$/test_cases.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/evaluate_accuracy.py" beforeDir="false" afterPath="$PROJECT_DIR$/evaluate_accuracy.py" afterDir="false" />
-    </list>
+    <list default="true" id="1950e1b7-562c-41b6-aef9-2444b1fe3360" name="Changes" comment="telegram" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
