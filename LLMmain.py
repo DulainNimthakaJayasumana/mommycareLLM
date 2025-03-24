@@ -51,6 +51,7 @@ pc = Pinecone(api_key=pinecone_api_key)
 pinecone_env = os.getenv("PINECONE_ENV", "us-east-1")
 spec = ServerlessSpec(cloud="aws", region=pinecone_env)
 
+
 existing_indexes = [idx["name"] for idx in pc.list_indexes()]
 if pinecone_index_name in existing_indexes:
     desc = pc.describe_index(pinecone_index_name)
@@ -86,14 +87,13 @@ def get_docs(query: str, top_k: int = 5) -> List[dict]:
     res = index.query(vector=xq, top_k=top_k, include_metadata=True)
     matches = res.get("matches", [])
     if not matches:
-        print("[red]No matching documents found.[/red]")
+        print("No matching documents found.")
         return []
     return [match["metadata"] for match in matches]
 
 
 os.environ["GROQ_API_KEY"] = groq_api_key
 groq_client = Groq(api_key=groq_api_key)
-
 
 def generate_answer(query: str, docs: List[dict]) -> str:
     """
@@ -129,12 +129,7 @@ def generate_answer(query: str, docs: List[dict]) -> str:
     return final_answer
 
 
-# ----------------------------
-# Chatbot Conversation Loop
-# ----------------------------
 def chatbot():
-    print("Welcome to the MommyCare Medical Chatbot!")
-    print("You can ask any questions or share your feelings. Type 'thank you' or 'bye' to exit.\n")
     while True:
         query = input("You: ").strip()
         if query.lower() in ["thank you", "thanks", "bye"]:
@@ -148,7 +143,6 @@ def chatbot():
         answer = generate_answer(query, docs)
         print("\nChatbot:", answer)
         print("\n")
-
 
 if __name__ == "__main__":
     chatbot()

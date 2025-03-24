@@ -5,7 +5,6 @@ from trans import sinhalaToEnglish, englishToSinhala
 import speech_recognition as sr
 import os
 import tempfile
-import uvicorn
 
 app = FastAPI()
 
@@ -62,6 +61,9 @@ async def get_answer_voice(audio_file: UploadFile = File(...)):
             except Exception:
                 pass
 
+# The following block will not be used by Vercel's serverless functions,
+# so it can remain for local development.
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))  # Ensure PORT is set correctly for Cloud Run
+    import uvicorn
+    port = int(os.environ.get("PORT", 8080))
     uvicorn.run(app, host="0.0.0.0", port=port)
