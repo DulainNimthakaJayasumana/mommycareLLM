@@ -4,7 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1950e1b7-562c-41b6-aef9-2444b1fe3360" name="Changes" comment="telegram" />
+
+    <list default="true" id="1950e1b7-562c-41b6-aef9-2444b1fe3360" name="Changes" comment="telegram">
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/mommycareLLM.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/mommycareLLM.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -18,6 +23,11 @@
     </option>
   </component>
   <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="018ab872653faf2f1cab124b38dae66bab48591c" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
     <option name="UPDATE_TYPE" value="REBASE" />
   </component>
@@ -53,9 +63,9 @@
     "Python.telegram_bot.executor": "Run",
     "Python.trans.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
+
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "git-widget-placeholder": "main",
+    "git-widget-placeholder": "isira__day__last",
     "last_opened_file_path": "/Users/dulainjayasumana/Documents/GitHub/mommycareLLM",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
