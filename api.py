@@ -8,6 +8,11 @@ import tempfile
 
 app = FastAPI()
 
+# --- Health Check Endpoint ---
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
 class QueryRequest(BaseModel):
     query: str
 

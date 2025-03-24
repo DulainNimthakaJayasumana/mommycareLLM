@@ -9,7 +9,7 @@ import asyncio
 # Disable tokenizers parallelism to avoid warnings
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-# Load environment variables from .env
+# Load environment variables from .env file
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -22,7 +22,7 @@ from semantic_router.encoders import HuggingFaceEncoder
 # Groq client for Llama 70B generation
 from groq import Groq
 
-# Retrieve API Keys
+# Retrieve API Keys from environment
 pinecone_api_key = os.getenv("PINECONE_API_KEY")
 if not pinecone_api_key:
     raise ValueError("PINECONE_API_KEY not set in .env file.")
@@ -39,7 +39,7 @@ if pinecone_index_name in existing_indexes:
     desc = pc.describe_index(pinecone_index_name)
     if desc["dimension"] != 768:
         raise ValueError(
-            f"Index '{pinecone_index_name}' exists with dimension {desc['dimension']}, but expected 768."
+            f"Index '{pinecone_index_name}' exists with dimension {desc['dimension']}, but expected 768. Please delete the index or use a new name."
         )
 else:
     print(f"Index '{pinecone_index_name}' does not exist. Creating it...")
@@ -65,6 +65,7 @@ groq_client = Groq(api_key=groq_api_key)
 def get_docs(query: str, top_k: int = 5) -> List[dict]:
     """
     Encodes the query and retrieves top_k matching chunks from the Pinecone index.
+    Returns a list of metadata dictionaries (including 'text' and 'title').
     """
     xq = encoder([query])
     res = index.query(vector=xq, top_k=top_k, include_metadata=True)
@@ -74,21 +75,20 @@ def get_docs(query: str, top_k: int = 5) -> List[dict]:
         return []
     return [match["metadata"] for match in matches]
 
-# Agentic Chunker Class with reduced chunk size
+# Agentic Chunker Class with reduced target chunk size to ease processing load.
 class AgenticChunker:
     def __init__(self, openai_api_key: Optional[str] = None):
-        self.id_truncate_limit = 5
+        self.id_truncate_limit = 5  # Short chunk IDs for simplicity.
         if openai_api_key is None:
             openai_api_key = os.getenv("OPENAI_API_KEY")
         if openai_api_key is None:
             raise ValueError("OPENAI_API_KEY not provided in environment variables.")
-        from langchain_community.chat_models.openai import ChatOpenAI  # Ensure correct import
+        from langchain_community.chat_models.openai import ChatOpenAI  # Correct import
         self.llm = ChatOpenAI(model_name='gpt-4-turbo', openai_api_key=openai_api_key, temperature=0.2)
 
     def chunk_document(self, text: str, target_chars: int = 1500, overlap_chars: int = 150) -> List[dict]:
-        """
-        Splits text into overlapping chunks; using smaller sizes to reduce resource load.
-        """
+        """Splits text into overlapping chunks and enriches each chunk with a summary and title."""
+        # Try splitting by page breaks first; otherwise, use double newlines
         if "\x0c" in text:
             segments = text.split("\x0c")
         else:
@@ -119,7 +119,7 @@ class AgenticChunker:
         truncated_text = text if len(text) <= 1000 else text[:1000] + "..."
         PROMPT = self.llm.model.build_prompt([
             ("system", "Generate a concise 1-sentence summary of the following text chunk."),
-            ("user", f"Text chunk:\n{text}")
+            ("user", f"Text chunk:\n{truncated_text}")
         ])
         result = self.llm(prompt=PROMPT)
         return result.strip()
@@ -133,7 +133,7 @@ class AgenticChunker:
         result = self.llm(prompt=PROMPT)
         return result.strip()
 
-# Embedding function using transformers
+# Embedding Function using transformers
 from transformers import AutoTokenizer, AutoModel
 import torch
 EMBEDDING_MODEL_NAME = "dwzhu/e5-base-4k"
@@ -147,7 +147,7 @@ def get_embedding(text: str) -> List[float]:
     embedding = outputs.last_hidden_state.mean(dim=1).squeeze().numpy()
     return embedding.tolist()
 
-# Async answer generation with timeout
+# Async answer generation with increased timeout and logging
 async def generate_answer_async(query: str, docs: List[dict]) -> str:
     if not docs:
         return "I'm sorry, I couldn't find any relevant information."
@@ -162,15 +162,18 @@ async def generate_answer_async(query: str, docs: List[dict]) -> str:
         {"role": "system", "content": system_message},
         {"role": "user", "content": query}
     ]
+    # Log the request
+    print("Sending LLM request with messages:", messages)
     try:
         response = await asyncio.wait_for(
             groq_client.chat.completions.create(
                 model="llama3-70b-8192",
                 messages=messages
             ),
-            timeout=30
+            timeout=45  # Increased timeout to 45 seconds
         )
         answer = response.choices[0].message.content
+        print("Received LLM response:", answer)
     except asyncio.TimeoutError:
         answer = "The request timed out. Please try again later."
     except Exception as e:
@@ -180,6 +183,7 @@ async def generate_answer_async(query: str, docs: List[dict]) -> str:
 def generate_answer(query: str, docs: List[dict]) -> str:
     return asyncio.run(generate_answer_async(query, docs))
 
+# Chatbot Interactive Loop for local testing
 def chatbot():
     print("Welcome to the MommyCare Medical Chatbot!")
     print("You can ask any questions or share your feelings. Type 'thank you' or 'bye' to exit.\n")
