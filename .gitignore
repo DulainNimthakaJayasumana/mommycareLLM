@@ -42,3 +42,4 @@ books/*.pdf
 # Temporary files
 *.tmp
 *.log
+.vercel

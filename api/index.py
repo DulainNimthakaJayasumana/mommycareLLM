@@ -8,11 +8,6 @@ import tempfile
 
 app = FastAPI()
 
-# --- Health Check Endpoint ---
-@app.get("/health")
-def health_check():
-    return {"status": "ok"}
-
 class QueryRequest(BaseModel):
     query: str
 
@@ -66,6 +61,8 @@ async def get_answer_voice(audio_file: UploadFile = File(...)):
             except Exception:
                 pass
 
+# The following block will not be used by Vercel's serverless functions,
+# so it can remain for local development.
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8080))

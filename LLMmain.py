@@ -1,15 +1,11 @@
 import os
 import time
-import uuid
-import re
-import glob
-from typing import Optional, List
-import asyncio
+from typing import List
 
 # Disable tokenizers parallelism to avoid warnings
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-# Load environment variables from .env file
+# Load environment variables from .env
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -22,24 +18,43 @@ from semantic_router.encoders import HuggingFaceEncoder
 # Groq client for Llama 70B generation
 from groq import Groq
 
-# Retrieve API Keys from environment
+# ----------------------------
+# Retrieve API Keys from .env
+# ----------------------------
 pinecone_api_key = os.getenv("PINECONE_API_KEY")
 if not pinecone_api_key:
     raise ValueError("PINECONE_API_KEY not set in .env file.")
+
 pinecone_index_name = os.getenv("PINECONE_INDEX_NAME", "medical-llm-index")
+
 groq_api_key = os.getenv("GROQ_API_KEY")
 if not groq_api_key:
     raise ValueError("GROQ_API_KEY not set in .env file.")
 
+# ----------------------------
+# Fix Type Hinting Issue in semantic_router for Python 3.9
+# ----------------------------
+import semantic_router.encoders.base
+if hasattr(semantic_router.encoders.base, "DenseEncoder"):
+    setattr(
+        semantic_router.encoders.base.DenseEncoder,
+        "set_score_threshold",
+        lambda cls, v: v  # Workaround for `float | None` error
+    )
+
+# ----------------------------
 # Initialize Pinecone
+# ----------------------------
 pc = Pinecone(api_key=pinecone_api_key)
 spec = ServerlessSpec(cloud="aws", region="us-west-2")
+
 existing_indexes = [idx["name"] for idx in pc.list_indexes()]
 if pinecone_index_name in existing_indexes:
     desc = pc.describe_index(pinecone_index_name)
     if desc["dimension"] != 768:
         raise ValueError(
-            f"Index '{pinecone_index_name}' exists with dimension {desc['dimension']}, but expected 768. Please delete the index or use a new name."
+            f"Index '{pinecone_index_name}' exists with dimension {desc['dimension']}, but expected 768. "
+            "Please delete the index or use a new name."
         )
 else:
     print(f"Index '{pinecone_index_name}' does not exist. Creating it...")
@@ -52,141 +67,63 @@ else:
     )
     while not pc.describe_index(pinecone_index_name).status.get("ready", False):
         time.sleep(1)
+
 index = pc.Index(pinecone_index_name)
 time.sleep(1)
 
-# Initialize Semantic Encoder
 encoder = HuggingFaceEncoder(name="dwzhu/e5-base-4k")
-
-# Initialize Groq Client
-os.environ["GROQ_API_KEY"] = groq_api_key
-groq_client = Groq(api_key=groq_api_key)
 
 def get_docs(query: str, top_k: int = 5) -> List[dict]:
     """
     Encodes the query and retrieves top_k matching chunks from the Pinecone index.
-    Returns a list of metadata dictionaries (including 'text' and 'title').
+    Returns a list of metadata dictionaries (including the 'text' and 'title').
     """
     xq = encoder([query])
     res = index.query(vector=xq, top_k=top_k, include_metadata=True)
     matches = res.get("matches", [])
     if not matches:
-        print("[red]No matching documents found.[/red]")
+        print("No matching documents found.")
         return []
     return [match["metadata"] for match in matches]
 
-# Agentic Chunker Class with reduced target chunk size to ease processing load.
-class AgenticChunker:
-    def __init__(self, openai_api_key: Optional[str] = None):
-        self.id_truncate_limit = 5  # Short chunk IDs for simplicity.
-        if openai_api_key is None:
-            openai_api_key = os.getenv("OPENAI_API_KEY")
-        if openai_api_key is None:
-            raise ValueError("OPENAI_API_KEY not provided in environment variables.")
-        from langchain_community.chat_models.openai import ChatOpenAI  # Correct import
-        self.llm = ChatOpenAI(model_name='gpt-4-turbo', openai_api_key=openai_api_key, temperature=0.2)
+os.environ["GROQ_API_KEY"] = groq_api_key
+groq_client = Groq(api_key=groq_api_key)
 
-    def chunk_document(self, text: str, target_chars: int = 1500, overlap_chars: int = 150) -> List[dict]:
-        """Splits text into overlapping chunks and enriches each chunk with a summary and title."""
-        # Try splitting by page breaks first; otherwise, use double newlines
-        if "\x0c" in text:
-            segments = text.split("\x0c")
-        else:
-            segments = text.split("\n\n")
-        full_text = " ".join(segments)
-        chunks = []
-        start = 0
-        text_length = len(full_text)
-        while start < text_length:
-            end = start + target_chars
-            chunk = full_text[start:end]
-            chunks.append(chunk)
-            start = max(0, start + target_chars - overlap_chars)
-        chunk_dicts = []
-        for chunk_text in chunks:
-            summary = self._get_new_chunk_summary(chunk_text)
-            title = self._get_new_chunk_title(summary)
-            chunk_id = str(uuid.uuid4())[:self.id_truncate_limit]
-            chunk_dicts.append({
-                'chunk_id': chunk_id,
-                'text': chunk_text,
-                'summary': summary,
-                'title': title
-            })
-        return chunk_dicts
-
-    def _get_new_chunk_summary(self, text: str) -> str:
-        truncated_text = text if len(text) <= 1000 else text[:1000] + "..."
-        PROMPT = self.llm.model.build_prompt([
-            ("system", "Generate a concise 1-sentence summary of the following text chunk."),
-            ("user", f"Text chunk:\n{truncated_text}")
-        ])
-        result = self.llm(prompt=PROMPT)
-        return result.strip()
-
-    def _get_new_chunk_title(self, summary: str) -> str:
-        truncated_summary = summary if len(summary) <= 500 else summary[:500] + "..."
-        PROMPT = self.llm.model.build_prompt([
-            ("system", "Generate a brief title capturing the main topic from the summary."),
-            ("user", f"Summary:\n{truncated_summary}")
-        ])
-        result = self.llm(prompt=PROMPT)
-        return result.strip()
-
-# Embedding Function using transformers
-from transformers import AutoTokenizer, AutoModel
-import torch
-EMBEDDING_MODEL_NAME = "dwzhu/e5-base-4k"
-tokenizer = AutoTokenizer.from_pretrained(EMBEDDING_MODEL_NAME)
-model = AutoModel.from_pretrained(EMBEDDING_MODEL_NAME)
-
-def get_embedding(text: str) -> List[float]:
-    inputs = tokenizer(text, return_tensors='pt', truncation=True, max_length=512)
-    with torch.no_grad():
-        outputs = model(**inputs)
-    embedding = outputs.last_hidden_state.mean(dim=1).squeeze().numpy()
-    return embedding.tolist()
-
-# Async answer generation with increased timeout and logging
-async def generate_answer_async(query: str, docs: List[dict]) -> str:
+def generate_answer(query: str, docs: List[dict]) -> str:
+    """
+    Constructs a prompt using the retrieved documents as context and the user's query,
+    then generates an answer using Groq's chat API with the Llama 70B model.
+    The answer is then appended with a disclaimer and references.
+    """
     if not docs:
-        return "I'm sorry, I couldn't find any relevant information."
+        return "I'm sorry, I couldn't find any relevant information. Please consult your doctor for medical advice."
+
     context_texts = [doc.get("text", "") for doc in docs]
     context = "\n---\n".join(context_texts)
+
     system_message = (
         "You are a compassionate and helpful medical chatbot designed for mothers. "
-        "Answer the question clearly and concisely based solely on the provided context.\n\n"
+        "Answer questions in a friendly and supportive manner. "
         "CONTEXT:\n" + context
     )
     messages = [
         {"role": "system", "content": system_message},
         {"role": "user", "content": query}
     ]
-    # Log the request
-    print("Sending LLM request with messages:", messages)
     try:
-        response = await asyncio.wait_for(
-            groq_client.chat.completions.create(
-                model="llama-3.2-1b-preview",
-                messages=messages
-            ),
-            timeout=45  # Increased timeout to 45 seconds
+        chat_response = groq_client.chat.completions.create(
+            model="llama3-70b-8192",
+            messages=messages
         )
-        answer = response.choices[0].message.content
-        print("Received LLM response:", answer)
-    except asyncio.TimeoutError:
-        answer = "The request timed out. Please try again later."
+        answer = chat_response.choices[0].message.content
     except Exception as e:
         answer = f"Error generating answer: {str(e)}"
-    return answer
 
-def generate_answer(query: str, docs: List[dict]) -> str:
-    return asyncio.run(generate_answer_async(query, docs))
+    final_answer = answer + "\n\n"
+    return final_answer
 
-# Chatbot Interactive Loop for local testing
+
 def chatbot():
-    print("Welcome to the MommyCare Medical Chatbot!")
-    print("You can ask any questions or share your feelings. Type 'thank you' or 'bye' to exit.\n")
     while True:
         query = input("You: ").strip()
         if query.lower() in ["thank you", "thanks", "bye"]:
