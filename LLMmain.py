@@ -1,6 +1,6 @@
 import os
 import time
-from typing import List, Optional  # Ensure compatibility with Python 3.9
+from typing import List
 
 # Disable tokenizers parallelism to avoid warnings
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -25,7 +25,6 @@ pinecone_api_key = os.getenv("PINECONE_API_KEY")
 if not pinecone_api_key:
     raise ValueError("PINECONE_API_KEY not set in .env file.")
 
-# Use the provided index name or a default
 pinecone_index_name = os.getenv("PINECONE_INDEX_NAME", "medical-llm-index")
 
 groq_api_key = os.getenv("GROQ_API_KEY")
@@ -47,9 +46,7 @@ if hasattr(semantic_router.encoders.base, "DenseEncoder"):
 # Initialize Pinecone
 # ----------------------------
 pc = Pinecone(api_key=pinecone_api_key)
-# Use the region from the environment (defaulting to us-east-1 if not set)
-pinecone_env = os.getenv("PINECONE_ENV", "us-east-1")
-spec = ServerlessSpec(cloud="aws", region=pinecone_env)
+spec = ServerlessSpec(cloud="aws", region="us-west-2")
 
 existing_indexes = [idx["name"] for idx in pc.list_indexes()]
 if pinecone_index_name in existing_indexes:
@@ -76,7 +73,6 @@ time.sleep(1)
 
 encoder = HuggingFaceEncoder(name="dwzhu/e5-base-4k")
 
-
 def get_docs(query: str, top_k: int = 5) -> List[dict]:
     """
     Encodes the query and retrieves top_k matching chunks from the Pinecone index.
@@ -86,14 +82,12 @@ def get_docs(query: str, top_k: int = 5) -> List[dict]:
     res = index.query(vector=xq, top_k=top_k, include_metadata=True)
     matches = res.get("matches", [])
     if not matches:
-        print("[red]No matching documents found.[/red]")
+        print("No matching documents found.")
         return []
     return [match["metadata"] for match in matches]
 
-
 os.environ["GROQ_API_KEY"] = groq_api_key
 groq_client = Groq(api_key=groq_api_key)
-
 
 def generate_answer(query: str, docs: List[dict]) -> str:
     """
@@ -129,12 +123,7 @@ def generate_answer(query: str, docs: List[dict]) -> str:
     return final_answer
 
 
-# ----------------------------
-# Chatbot Conversation Loop
-# ----------------------------
 def chatbot():
-    print("Welcome to the MommyCare Medical Chatbot!")
-    print("You can ask any questions or share your feelings. Type 'thank you' or 'bye' to exit.\n")
     while True:
         query = input("You: ").strip()
         if query.lower() in ["thank you", "thanks", "bye"]:
@@ -148,7 +137,6 @@ def chatbot():
         answer = generate_answer(query, docs)
         print("\nChatbot:", answer)
         print("\n")
-
 
 if __name__ == "__main__":
     chatbot()

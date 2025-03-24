@@ -1,7 +1,7 @@
 # Core dependencies
 python-dotenv>=1.0.0
 pinecone>=3.0.0
-semantic-router[local]>=0.0.38
+semantic-router>=0.0.38
 groq>=0.4.0
 
 # API and Web
