@@ -167,7 +167,7 @@ async def generate_answer_async(query: str, docs: List[dict]) -> str:
     try:
         response = await asyncio.wait_for(
             groq_client.chat.completions.create(
-                model="llama3-70b-8192",
+                model="llama-3.2-1b-preview",
                 messages=messages
             ),
             timeout=45  # Increased timeout to 45 seconds
