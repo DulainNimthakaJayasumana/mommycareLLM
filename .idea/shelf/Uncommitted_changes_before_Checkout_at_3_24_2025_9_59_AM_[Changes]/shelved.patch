@@ -1,0 +1,137 @@
+Index: docker-compose.yml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/docker-compose.yml b/docker-compose.yml
+deleted file mode 100644
+--- a/docker-compose.yml	(revision 204dbc65902b5333e684067684996414e061757d)
++++ /dev/null	(revision 204dbc65902b5333e684067684996414e061757d)
+@@ -1,8 +0,0 @@
+-version: "3.8"
+-services:
+-  mommycarellm:
+-    build: .
+-    ports:
+-      - "8080:8080"
+-    env_file:
+-      - .env
+Index: api/index.py
+===================================================================
+diff --git a/api/index.py b/api/index.py
+deleted file mode 100644
+--- a/api/index.py	(revision 204dbc65902b5333e684067684996414e061757d)
++++ /dev/null	(revision 204dbc65902b5333e684067684996414e061757d)
+@@ -1,69 +0,0 @@
+-from fastapi import FastAPI, HTTPException, UploadFile, File
+-from pydantic import BaseModel
+-from LLMmain import get_docs, generate_answer
+-from trans import sinhalaToEnglish, englishToSinhala
+-import speech_recognition as sr
+-import os
+-import tempfile
+-
+-app = FastAPI()
+-
+-class QueryRequest(BaseModel):
+-    query: str
+-
+-@app.post("/get_answer/")
+-def get_answer(request: QueryRequest):
+-    try:
+-        english_query = sinhalaToEnglish(request.query)
+-        docs = get_docs(english_query, top_k=5)
+-        answer = generate_answer(request.query, docs)
+-        return {"answer": answer}
+-    except Exception as e:
+-        raise HTTPException(status_code=500, detail=str(e))
+-
+-@app.post("/get_answer_sinhala/")
+-def get_answer_sinhala(request: QueryRequest):
+-    try:
+-        english_query = sinhalaToEnglish(request.query)
+-        docs = get_docs(english_query, top_k=5)
+-        english_answer = generate_answer(english_query, docs)
+-        sinhala_answer = englishToSinhala(english_answer)
+-        return {"answer": sinhala_answer}
+-    except Exception as e:
+-        raise HTTPException(status_code=500, detail=str(e))
+-
+-@app.post("/get_answer_voice/")
+-async def get_answer_voice(audio_file: UploadFile = File(...)):
+-    temp_audio_path = None
+-    try:
+-        fd, temp_audio_path = tempfile.mkstemp(suffix=".wav")
+-        os.close(fd)
+-        content = await audio_file.read()
+-        with open(temp_audio_path, "wb") as buffer:
+-            buffer.write(content)
+-        recognizer = sr.Recognizer()
+-        with sr.AudioFile(temp_audio_path) as source:
+-            audio_data = recognizer.record(source)
+-            text_query = recognizer.recognize_google(audio_data)
+-        docs = get_docs(text_query, top_k=5)
+-        answer = generate_answer(text_query, docs)
+-        return {"query": text_query, "answer": answer}
+-    except sr.UnknownValueError:
+-        raise HTTPException(status_code=400, detail="Speech could not be understood")
+-    except sr.RequestError as e:
+-        raise HTTPException(status_code=503, detail=f"Speech recognition service error: {str(e)}")
+-    except Exception as e:
+-        raise HTTPException(status_code=500, detail=str(e))
+-    finally:
+-        if temp_audio_path and os.path.exists(temp_audio_path):
+-            try:
+-                os.unlink(temp_audio_path)
+-            except Exception:
+-                pass
+-
+-# The following block will not be used by Vercel's serverless functions,
+-# so it can remain for local development.
+-if __name__ == "__main__":
+-    import uvicorn
+-    port = int(os.environ.get("PORT", 8080))
+-    uvicorn.run(app, host="0.0.0.0", port=port)
+Index: .dockerignore
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.dockerignore b/.dockerignore
+deleted file mode 100644
+--- a/.dockerignore	(revision 204dbc65902b5333e684067684996414e061757d)
++++ /dev/null	(revision 204dbc65902b5333e684067684996414e061757d)
+@@ -1,6 +0,0 @@
+-__pycache__
+-*.pyc
+-*.pyo
+-*.pyd
+-.git
+-.gitignore
+Index: vercel.json
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>{\r\n    \"version\": 2,\r\n    \"builds\": [\r\n      {\r\n        \"src\": \"api/index.py\",\r\n        \"use\": \"@vercel/python\"\r\n      }\r\n    ],\r\n    \"routes\": [\r\n      {\r\n        \"src\": \"/(.*)\",\r\n        \"dest\": \"api/index.py\"\r\n      }\r\n    ]\r\n  }\r\n  
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/vercel.json b/vercel.json
+--- a/vercel.json	(revision 204dbc65902b5333e684067684996414e061757d)
++++ b/vercel.json	(date 1742790264353)
+@@ -2,14 +2,14 @@
+     "version": 2,
+     "builds": [
+       {
+-        "src": "api/index.py",
++        "src": "api.py",
+         "use": "@vercel/python"
+       }
+     ],
+     "routes": [
+       {
+         "src": "/(.*)",
+-        "dest": "api/index.py"
++        "dest": "api.py"
+       }
+     ]
+   }
