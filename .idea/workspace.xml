@@ -201,7 +201,7 @@
       <workItem from="1742402018665" duration="10883000" />
       <workItem from="1742670364278" duration="11240000" />
       <workItem from="1742731204746" duration="364000" />
-      <workItem from="1744135541254" duration="1072000" />
+      <workItem from="1744135541254" duration="1787000" />
     </task>
     <servers />
   </component>
@@ -222,7 +222,7 @@
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/mommycareLLM$telegramBot.coverage" NAME="telegramBot Coverage Results" MODIFIED="1744136593173" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/mommycareLLM$trans.coverage" NAME="trans Coverage Results" MODIFIED="1744136588000" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/mommycareLLM$evaluate_accuracy.coverage" NAME="evaluate_accuracy Coverage Results" MODIFIED="1742790867789" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/mommycareLLM$evaluate_accuracy.coverage" NAME="evaluate_accuracy Coverage Results" MODIFIED="1744136672661" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/app" />
     <SUITE FILE_PATH="coverage/mommycareLLM$agenticChunking.coverage" NAME="agenticChunking Coverage Results" MODIFIED="1742678565610" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/mommycareLLM$sql.coverage" NAME="sql Coverage Results" MODIFIED="1742681154016" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/mommycareLLM$telegram_bot.coverage" NAME="telegram_bot Coverage Results" MODIFIED="1742665227101" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
